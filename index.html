@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
-  <title>나의 작업 관리 · v0.5</title>
+  <title>나의 작업 관리 · v0.7</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f7f8fa; color: #242424; font-family: system-ui, 'Noto Sans KR', sans-serif; }
@@ -50,6 +50,20 @@
     .later { background: #e2ecff; color: #2459a0; }
     .delete { background: #ffe3e3; color: #ad3333; }
     .task-card { position: relative; background: white; padding: 18px; border: 1px solid #eee; border-radius: 17px; min-height: 88px; transition: transform .25s cubic-bezier(.22,1,.36,1); will-change: transform; touch-action: pan-y; user-select: none; }
+    .category-color-control { display: flex; align-items: center; gap: 10px; }
+    .category-color-control select { flex: 1; min-width: 0; padding: 8px; border-radius: 9px; border: 1px solid #ddd; background: white; }
+    .category-swatch { width: 26px; height: 26px; border-radius: 8px; border: 1px solid rgba(0,0,0,.09); flex-shrink: 0; }
+    .task-card.completed { background: #eef0f3 !important; border-color: #dce0e6 !important; color: #747b85; }
+    .task-card.completed .task-title { text-decoration: line-through; text-decoration-thickness: 1.5px; }
+    .task-card.completed .meta { color: #838b95; }
+    .complete-mark { display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; color: #64716c; font-size: 12px; font-weight: 650; }
+    .completed-section { margin-top: 26px; border-top: 1px solid #e0e3e8; padding-top: 10px; }
+    .completed-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 15px 4px; color: #606873; background: transparent; font-weight: 650; text-align: left; }
+    .completed-toggle .arrow { font-size: 18px; }
+    .completed-items { padding-top: 4px; }
+    .completed-note { font-size: 12px; color: #9299a2; margin: 0 0 12px; }
+    .dot.completed-dot { background: #aab1bc; }
+    .day.selected .dot.completed-dot { background: #c9ced6; }
     .task-card.open { transform: translateX(-225px); }
     .task-card.dragging { transition: none; }
     .task-card { padding-right: 56px; }
@@ -149,6 +163,17 @@
     const OLD = 'simple-task-v1';
     const KEY = 'simple-task-v2'; // 기존 v0.2 데이터 유지
     const CATKEY = 'simple-task-categories-v1';
+    const COLORKEY = 'simple-task-category-colors-v1';
+    const PALETTE = [
+      { name: '파랑', bg: '#e7f1ff', border: '#c4dcfc' },
+      { name: '초록', bg: '#e6f5eb', border: '#c0e5cd' },
+      { name: '주황', bg: '#fff0df', border: '#f4d6b5' },
+      { name: '보라', bg: '#f0e9ff', border: '#dbccfa' },
+      { name: '분홍', bg: '#ffeaf0', border: '#f7cad8' },
+      { name: '노랑', bg: '#fff7d9', border: '#f0e3ab' },
+      { name: '청록', bg: '#e1f5f2', border: '#b8e5de' },
+      { name: '회색', bg: '#edf0f4', border: '#d6dce5' }
+    ];
     const DEFAULTS = ['수업', '학년', '내 일', '개인업무'];
     const $ = id => document.getElementById(id);
 
@@ -167,10 +192,24 @@
     if (!Array.isArray(categories)) categories = [...DEFAULTS];
     categories = [...new Set([...DEFAULTS, ...categories, ...tasks.map(t => t.category).filter(Boolean)])];
 
+    let categoryColors = read(COLORKEY, {});
+    if (!categoryColors || typeof categoryColors !== 'object' || Array.isArray(categoryColors)) categoryColors = {};
+    // 기존 업무의 카테고리도 포함해 색상을 자동 배정합니다.
+    categories.forEach((name, index) => {
+      if (!Number.isInteger(categoryColors[name]) || categoryColors[name] < 0 || categoryColors[name] >= PALETTE.length) {
+        categoryColors[name] = index % PALETTE.length;
+      }
+    });
+    function colorFor(name) {
+      return PALETTE[categoryColors[name] ?? 0];
+    }
+
     let view = 'list';
     let sort = 'date';
     let editing = null;
     let openId = null;
+    let showCompletedList = false;
+    let showCompletedDay = false;
     const now = new Date();
     let month = new Date(now.getFullYear(), now.getMonth(), 1);
     let selected = localDate(now);
@@ -193,6 +232,7 @@
     function persist() {
       localStorage.setItem(KEY, JSON.stringify(tasks));
       localStorage.setItem(CATKEY, JSON.stringify(categories));
+      localStorage.setItem(COLORKEY, JSON.stringify(categoryColors));
       render();
     }
     function notify(message) {
@@ -267,12 +307,33 @@
         button.onclick = () => {
           if (!confirm(`'${name}' 종류를 삭제할까요? 소속 업무는 '내 일'로 이동합니다.`)) return;
           categories = categories.filter(c => c !== name);
+          delete categoryColors[name];
           tasks.forEach(t => { if (t.category === name) t.category = '내 일'; });
           fillCategories('내 일');
           persist();
           renderCategoryList();
         };
-        row.append(label, button);
+        const controls = document.createElement('div');
+        controls.className = 'category-color-control';
+        const swatch = document.createElement('span');
+        swatch.className = 'category-swatch';
+        swatch.style.background = colorFor(name).bg;
+        const picker = document.createElement('select');
+        picker.setAttribute('aria-label', name + ' 색상 선택');
+        PALETTE.forEach((color, index) => {
+          const option = document.createElement('option');
+          option.value = String(index);
+          option.textContent = color.name;
+          picker.append(option);
+        });
+        picker.value = String(categoryColors[name] ?? 0);
+        picker.onchange = () => {
+          categoryColors[name] = Number(picker.value);
+          swatch.style.background = colorFor(name).bg;
+          persist();
+        };
+        controls.append(swatch, picker, button);
+        row.append(label, controls);
         root.append(row);
       }
     }
@@ -287,6 +348,7 @@
       if (!name) return;
       if (categories.includes(name)) { notify('이미 있는 종류입니다'); return; }
       categories.push(name);
+      categoryColors[name] = (categories.length - 1) % PALETTE.length;
       $('categoryName').value = '';
       fillCategories(name);
       persist();
@@ -325,10 +387,59 @@
 
     function complete(id) {
       const task = tasks.find(t => t.id === id);
-      if (task) task.done = true;
+      if (!task) return;
+      task.done = true;
+      task.completedAt = new Date().toISOString();
       openId = null;
       persist();
-      notify('완료했어요');
+      notify('완료한 업무에 보관했어요');
+    }
+    function undoComplete(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      task.done = false;
+      task.completedAt = null;
+      openId = null;
+      persist();
+      notify('미완료 업무로 되돌렸어요');
+    }
+    function completedTasks(date = null) {
+      return tasks.filter(t => t.done && (date === null || t.date === date))
+        .sort((a, b) => (b.completedAt || '').localeCompare(a.completedAt || '') || (b.created || 0) - (a.created || 0));
+    }
+    function completedSection(root, list, isCalendar = false) {
+      if (!list.length) return;
+      const section = document.createElement('section');
+      section.className = 'completed-section';
+      const expanded = isCalendar ? showCompletedDay : showCompletedList;
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'completed-toggle';
+      toggle.setAttribute('aria-expanded', String(expanded));
+      const label = document.createElement('span');
+      label.textContent = `✓ 완료한 업무 (${list.length}개)`;
+      const arrow = document.createElement('span');
+      arrow.className = 'arrow';
+      arrow.textContent = expanded ? '⌃' : '⌄';
+      toggle.append(label, arrow);
+      toggle.onclick = () => {
+        if (isCalendar) showCompletedDay = !showCompletedDay;
+        else showCompletedList = !showCompletedList;
+        openId = null;
+        render();
+      };
+      section.append(toggle);
+      if (expanded) {
+        const note = document.createElement('p');
+        note.className = 'completed-note';
+        note.textContent = '완료 취소하거나, 별도로 삭제할 수 있어요.';
+        section.append(note);
+        const items = document.createElement('div');
+        items.className = 'completed-items';
+        for (const task of list) items.append(makeTask(task));
+        section.append(items);
+      }
+      root.append(section);
     }
     function removeTask(id) {
       if (!confirm('이 업무를 삭제할까요?')) return;
@@ -353,11 +464,10 @@
       wrap.classList.toggle('menu-open', openId === task.id);
       const actions = document.createElement('div');
       actions.className = 'task-actions';
-      for (const [label, cls, fn, symbol] of [
-        ['완료', 'done', complete, '✓'],
-        ['+1일', 'later', postpone, '↗'],
-        ['삭제', 'delete', removeTask, '×']
-      ]) {
+      const taskActions = task.done
+        ? [['완료 취소', 'done', undoComplete, '↶'], ['+1일', 'later', postpone, '↗'], ['삭제', 'delete', removeTask, '×']]
+        : [['완료', 'done', complete, '✓'], ['+1일', 'later', postpone, '↗'], ['삭제', 'delete', removeTask, '×']];
+      for (const [label, cls, fn, symbol] of taskActions) {
         const button = document.createElement('button');
         button.className = cls;
         button.type = 'button';
@@ -371,6 +481,10 @@
       }
       const card = document.createElement('div');
       card.className = 'task-card' + (openId === task.id ? ' open' : '');
+      const cardColor = colorFor(task.category || '내 일');
+      card.style.backgroundColor = cardColor.bg;
+      card.style.borderColor = cardColor.border;
+      card.classList.toggle('completed', !!task.done);
       card.tabIndex = 0;
       card.setAttribute('role', 'button');
       card.setAttribute('aria-label', task.title + ' 상세 열기');
@@ -381,6 +495,17 @@
       meta.className = 'meta';
       meta.textContent = (task.category || '내 일') + ' · ' + (task.date || '마감일 없음');
       card.append(title, meta);
+      if (task.done) {
+        const mark = document.createElement('div');
+        mark.className = 'complete-mark';
+        let finished = '';
+        if (task.completedAt) {
+          const d = new Date(task.completedAt);
+          if (!Number.isNaN(d.getTime())) finished = ` · ${d.toLocaleDateString('ko-KR')} 완료`;
+        }
+        mark.textContent = '✓ 완료됨' + finished;
+        card.append(mark);
+      }
 
       const menu = document.createElement('button');
       menu.className = 'task-menu';
@@ -528,9 +653,11 @@
         const number = document.createElement('span');
         number.textContent = day;
         button.append(number);
-        if (tasks.some(t => !t.done && t.date === date)) {
+        const hasPending = tasks.some(t => !t.done && t.date === date);
+        const hasCompleted = tasks.some(t => t.done && t.date === date);
+        if (hasPending || hasCompleted) {
           const dot = document.createElement('span');
-          dot.className = 'dot';
+          dot.className = 'dot' + (!hasPending ? ' completed-dot' : '');
           button.append(dot);
         }
         button.onclick = () => { if (performance.now() < suppressClickUntil) return; selected = date; openId = null; render(); };
@@ -560,7 +687,15 @@
       sub.textContent = selected + ' 업무';
       root.append(sub);
       // 목록은 별도 높이 제한이 없어 길어지면 페이지를 자연스럽게 세로 스크롤할 수 있음.
-      appendTasks(root, visible().filter(t => t.date === selected));
+      const pending = visible().filter(t => t.date === selected);
+      if (pending.length) appendTasks(root, pending);
+      else {
+        const empty = document.createElement('div');
+        empty.className = 'count';
+        empty.textContent = '이 날짜에 남은 업무가 없어요.';
+        root.append(empty);
+      }
+      completedSection(root, completedTasks(selected), true);
     }
     function render() {
       const root = $('content');
@@ -584,7 +719,14 @@
             root.append(heading);
             appendTasks(root, group);
           }
-        } else appendTasks(root, list);
+        } else if (list.length) appendTasks(root, list);
+        else {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = '남은 업무가 없어요. + 버튼으로 추가해 보세요.';
+          root.append(empty);
+        }
+        completedSection(root, completedTasks());
       } else renderCalendar(root);
     }
     // 리스트와 달력 전환은 상단 탭만 사용합니다.

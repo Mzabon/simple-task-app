@@ -1,5 +1,5 @@
 
-const CACHE_NAME = "simple-task-v05-offline";
+const CACHE_NAME = 'simple-task-app-v07-1';
 
 const FILES = [
   "./",
