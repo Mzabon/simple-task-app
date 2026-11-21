@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f8fa">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
+  <title>나의 작업 관리 · v0.5</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f7f8fa; color: #242424; font-family: system-ui, 'Noto Sans KR', sans-serif; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; border: 0; }
+    main { width: 100%; max-width: 760px; margin: auto; padding: 24px clamp(14px, 4vw, 30px) 70px; }
+    #content { touch-action: pan-y; min-height: 45vh; }
+    @media (max-width: 480px) {
+      main { padding: 18px 14px 80px; }
+      h1 { font-size: 22px; }
+      .nav { gap: 6px; }
+      .nav button { padding: 13px 4px; }
+      .task-card { padding: 16px; }
+      .day { min-height: 46px; }
+    }
+    @media (min-width: 900px) { main { max-width: 760px; padding-top: 40px; } }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+    .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin: 0; }
+    .add { background: #222; color: #fff; border-radius: 13px; width: 46px; height: 46px; font-size: 26px; }
+    .nav { display: flex; gap: 8px; margin-bottom: 20px; }
+    .nav button { background: #fff; border-radius: 12px; padding: 13px 8px; flex: 1; }
+    .nav .active { background: #222; color: #fff; }
+    .count, .hint { font-size: 13px; color: #777; }
+    .count { margin-bottom: 14px; }
+    .group-title { font-size: 14px; font-weight: 700; margin: 22px 0 10px; }
+    .task-wrap { position: relative; overflow: hidden; border-radius: 17px; margin-bottom: 12px; background: #e9ecef; touch-action: pan-y; }
+    .task-actions { position: absolute; inset: 0 0 0 auto; display: flex; width: 225px; }
+    .task-actions button { min-height: 48px; }
+    .task-menu { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); z-index: 2; background: #f1f2f4; border-radius: 10px; width: 38px; height: 38px; font-size: 21px; opacity: 0; pointer-events: none; transition: opacity .16s; }
+    .task-wrap:hover .task-menu, .task-wrap:focus-within .task-menu { opacity: 1; pointer-events: auto; }
+    @media (pointer: fine) { .task-wrap .task-menu { opacity: .55; pointer-events: auto; } }
+    @media (hover: none) { .task-menu { opacity: .55; pointer-events: auto; } }
+    .task-wrap.menu-open .task-menu { opacity: 0; pointer-events: none; }
+    .task-actions button { width: 75px; font-size: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+    .done { background: #dff4e7; color: #116d39; }
+    .later { background: #e2ecff; color: #2459a0; }
+    .delete { background: #ffe3e3; color: #ad3333; }
+    .task-card { position: relative; background: white; padding: 18px; border: 1px solid #eee; border-radius: 17px; min-height: 88px; transition: transform .25s cubic-bezier(.22,1,.36,1); will-change: transform; touch-action: pan-y; user-select: none; }
+    .task-card.open { transform: translateX(-225px); }
+    .task-card.dragging { transition: none; }
+    .task-card { padding-right: 56px; }
+    .task-title { font-size: 17px; font-weight: 650; margin: 0 0 10px; }
+    .meta { color: #777; font-size: 12px; }
+    .empty { text-align: center; color: #999; padding: 55px 0; }
+    .calendar-area { touch-action: pan-y; }
+    .calendar-area .days { user-select: none; }
+    .calendar-head { display: flex; justify-content: space-between; align-items: center; margin: 10px 0 18px; }
+    .calendar-head button { background: white; padding: 10px 14px; border-radius: 10px; }
+    .week, .days { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 5px; }
+    .week { color: #999; font-size: 12px; margin-bottom: 8px; }
+    .week .sunday, .day.sunday:not(.selected) { color: #c44752; }
+    .week .saturday, .day.saturday:not(.selected) { color: #2866bb; }
+    .day { min-height: 54px; min-width: 0; border-radius: 11px; background: white; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; }
+    .day.selected { background: #222; color: white; }
+    .day.muted { background: transparent; }
+    .dot { width: 5px; height: 5px; background: #5794e8; border-radius: 50%; }
+    .day.selected .dot { background: white; }
+    .date-label { margin: 24px 0 12px; font-weight: 650; }
+    .modal { border: 0; border-radius: 20px; padding: 22px; width: min(94vw, 420px); max-height: 90dvh; overflow-y: auto; box-shadow: 0 15px 60px #0002; }
+    .modal::backdrop { background: #0006; }
+    .modal h2 { font-size: 20px; margin: 0 0 20px; }
+    .field { display: block; margin: 14px 0; font-size: 13px; font-weight: 600; }
+    .field input, .field select, .field textarea { display: block; width: 100%; border: 1px solid #e1e1e1; border-radius: 10px; padding: 12px; margin-top: 7px; background: #fff; color: #222; }
+    .field textarea { min-height: 120px; resize: vertical; }
+    .modal-actions { display: flex; gap: 9px; margin-top: 20px; }
+    .modal-actions button { flex: 1; padding: 13px; border-radius: 12px; background: #eee; }
+    .modal-actions .primary { background: #222; color: white; }
+    .category-row { display: flex; gap: 7px; }
+    .category-row select { flex: 1; min-width: 0; }
+    .category-row button { margin-top: 7px; padding: 0 12px; border-radius: 10px; background: #eee; }
+    .category-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .category-item button { padding: 8px 12px; border-radius: 9px; background: #ffe3e3; color: #ad3333; }
+    .category-item button:disabled { background: #f5f5f5; color: #aaa; }
+    .sort-option { width: 100%; padding: 15px 10px; text-align: left; border-radius: 10px; background: #f5f5f5; margin: 5px 0; }
+    .sort-option.chosen { background: #222; color: #fff; }
+    .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 12px 18px; border-radius: 12px; font-size: 13px; display: none; max-width: 90vw; }
+    button:focus-visible, .task-card:focus-visible { outline: 3px solid #6da2ff; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="top">
+      <h1 id="heading">전체 업무</h1>
+      <button class="add" id="add" aria-label="업무 추가">+</button>
+    </header>
+    <nav class="nav">
+      <button id="listTab" class="active">리스트</button>
+      <button id="calendarTab">달력</button>
+      <button id="sortButton">정렬 ↕</button>
+    </nav>
+    <div id="content"></div>
+  </main>
+
+  <dialog class="modal" id="editor">
+    <h2 id="editorTitle">새 업무</h2>
+    <form id="taskForm">
+      <label class="field">업무 제목 *<input id="title" maxlength="100" required placeholder="무엇을 해야 하나요?"></label>
+      <label class="field">업무 종류
+        <div class="category-row">
+          <select id="category"></select>
+          <button type="button" id="manageCategories">종류 관리</button>
+        </div>
+      </label>
+      <label class="field">마감 날짜<input id="date" type="date"></label>
+      <label class="field">세부 내용<textarea id="detail" placeholder="필요한 내용을 자유롭게 적어주세요"></textarea></label>
+      <div class="modal-actions">
+        <button type="button" id="cancel">취소</button>
+        <button type="submit" class="primary">저장</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="categoryDialog">
+    <h2>업무 종류 관리</h2>
+    <p class="hint">기본 종류는 삭제할 수 없어요. 추가한 종류를 삭제하면 해당 업무는 '내 일'로 이동합니다.</p>
+    <div id="categoryList"></div>
+    <form id="categoryForm">
+      <label class="field">새 종류 이름<input id="categoryName" maxlength="30" required placeholder="예: 회의"></label>
+      <div class="modal-actions">
+        <button type="button" id="closeCategories">닫기</button>
+        <button type="submit" class="primary">추가</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="sortDialog">
+    <h2>정렬 기준</h2>
+    <button class="sort-option" data-sort="date">마감일 빠른 순</button>
+    <button class="sort-option" data-sort="category">업무 종류별 순서</button>
+    <div class="modal-actions"><button id="closeSort">취소</button></div>
+  </dialog>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const OLD = 'simple-task-v1';
+    const KEY = 'simple-task-v2'; // 기존 v0.2 데이터 유지
+    const CATKEY = 'simple-task-categories-v1';
+    const DEFAULTS = ['수업', '학년', '내 일', '개인업무'];
+    const $ = id => document.getElementById(id);
+
+    function read(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+      catch { return fallback; }
+    }
+
+    let tasks = read(KEY, null);
+    if (!Array.isArray(tasks)) {
+      tasks = read(OLD, []);
+      if (!Array.isArray(tasks)) tasks = [];
+      localStorage.setItem(KEY, JSON.stringify(tasks));
+    }
+    let categories = read(CATKEY, [...DEFAULTS]);
+    if (!Array.isArray(categories)) categories = [...DEFAULTS];
+    categories = [...new Set([...DEFAULTS, ...categories, ...tasks.map(t => t.category).filter(Boolean)])];
+
+    let view = 'list';
+    let sort = 'date';
+    let editing = null;
+    let openId = null;
+    const now = new Date();
+    let month = new Date(now.getFullYear(), now.getMonth(), 1);
+    let selected = localDate(now);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const ACTION_WIDTH = 225;
+    let viewAnimating = false;
+    let suppressClickUntil = 0;
+    function animateContent(direction) {
+      if (reducedMotion.matches) return;
+      const element = $('content');
+      element.animate([
+        { opacity: 0.55, transform: `translateX(${direction * 18}px)` },
+        { opacity: 1, transform: 'translateX(0)' }
+      ], { duration: 220, easing: 'cubic-bezier(.22,1,.36,1)' });
+    }
+
+    function localDate(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+    function persist() {
+      localStorage.setItem(KEY, JSON.stringify(tasks));
+      localStorage.setItem(CATKEY, JSON.stringify(categories));
+      render();
+    }
+    function notify(message) {
+      const element = $('toast');
+      element.textContent = message;
+      element.style.display = 'block';
+      clearTimeout(notify.timer);
+      notify.timer = setTimeout(() => element.style.display = 'none', 2200);
+    }
+    function visible() {
+      return tasks.filter(t => !t.done).sort((a, b) => {
+        const dateCompare = (a.date || '9999-12-31').localeCompare(b.date || '9999-12-31');
+        if (sort === 'category') {
+          const aIndex = categories.indexOf(a.category);
+          const bIndex = categories.indexOf(b.category);
+          return (aIndex < 0 ? 999 : aIndex) - (bIndex < 0 ? 999 : bIndex)
+            || (a.category || '').localeCompare(b.category || '', 'ko')
+            || dateCompare || (a.created || 0) - (b.created || 0);
+        }
+        return dateCompare || (a.created || 0) - (b.created || 0);
+      });
+    }
+    function setView(next) {
+      if (next === view) return;
+      const direction = next === 'calendar' ? 1 : -1;
+      view = next;
+      openId = null;
+      render();
+      animateContent(direction);
+    }
+    $('listTab').onclick = () => setView('list');
+    $('calendarTab').onclick = () => setView('calendar');
+    $('add').onclick = () => openEditor();
+    $('cancel').onclick = () => $('editor').close();
+
+    $('sortButton').onclick = () => {
+      document.querySelectorAll('.sort-option').forEach(button => {
+        button.classList.toggle('chosen', button.dataset.sort === sort);
+      });
+      $('sortDialog').showModal();
+    };
+    document.querySelectorAll('.sort-option').forEach(button => {
+      button.onclick = () => {
+        sort = button.dataset.sort;
+        $('sortDialog').close();
+        render();
+      };
+    });
+    $('closeSort').onclick = () => $('sortDialog').close();
+
+    function fillCategories(value) {
+      $('category').replaceChildren();
+      for (const name of categories) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        $('category').append(option);
+      }
+      $('category').value = categories.includes(value) ? value : '내 일';
+    }
+    function renderCategoryList() {
+      const root = $('categoryList');
+      root.replaceChildren();
+      for (const name of categories) {
+        const row = document.createElement('div');
+        row.className = 'category-item';
+        const label = document.createElement('span');
+        label.textContent = name;
+        const button = document.createElement('button');
+        button.textContent = DEFAULTS.includes(name) ? '기본 종류' : '삭제';
+        button.disabled = DEFAULTS.includes(name);
+        button.onclick = () => {
+          if (!confirm(`'${name}' 종류를 삭제할까요? 소속 업무는 '내 일'로 이동합니다.`)) return;
+          categories = categories.filter(c => c !== name);
+          tasks.forEach(t => { if (t.category === name) t.category = '내 일'; });
+          fillCategories('내 일');
+          persist();
+          renderCategoryList();
+        };
+        row.append(label, button);
+        root.append(row);
+      }
+    }
+    $('manageCategories').onclick = () => {
+      renderCategoryList();
+      $('categoryDialog').showModal();
+    };
+    $('closeCategories').onclick = () => $('categoryDialog').close();
+    $('categoryForm').onsubmit = event => {
+      event.preventDefault();
+      const name = $('categoryName').value.trim();
+      if (!name) return;
+      if (categories.includes(name)) { notify('이미 있는 종류입니다'); return; }
+      categories.push(name);
+      $('categoryName').value = '';
+      fillCategories(name);
+      persist();
+      renderCategoryList();
+    };
+
+    function openEditor(id = null) {
+      editing = id;
+      const task = tasks.find(t => t.id === id);
+      $('editorTitle').textContent = task ? '업무 상세 · 수정' : '새 업무';
+      $('title').value = task?.title || '';
+      $('date').value = task?.date || '';
+      $('detail').value = task?.detail || '';
+      fillCategories(task?.category);
+      $('editor').showModal();
+    }
+    $('taskForm').onsubmit = event => {
+      event.preventDefault();
+      const title = $('title').value.trim();
+      if (!title) return;
+      const data = {
+        title,
+        category: $('category').value,
+        date: $('date').value,
+        detail: $('detail').value
+      };
+      if (editing) {
+        const task = tasks.find(t => t.id === editing);
+        if (task) Object.assign(task, data);
+      } else {
+        tasks.push({ id: crypto.randomUUID(), ...data, done: false, created: Date.now() });
+      }
+      $('editor').close();
+      persist();
+    };
+
+    function complete(id) {
+      const task = tasks.find(t => t.id === id);
+      if (task) task.done = true;
+      openId = null;
+      persist();
+      notify('완료했어요');
+    }
+    function removeTask(id) {
+      if (!confirm('이 업무를 삭제할까요?')) return;
+      tasks = tasks.filter(t => t.id !== id);
+      openId = null;
+      persist();
+    }
+    function postpone(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      const date = task.date ? new Date(task.date + 'T12:00:00') : new Date();
+      date.setDate(date.getDate() + 1);
+      task.date = localDate(date);
+      openId = null;
+      persist();
+      notify('마감일을 하루 미뤘어요');
+    }
+
+    function makeTask(task) {
+      const wrap = document.createElement('div');
+      wrap.className = 'task-wrap';
+      wrap.classList.toggle('menu-open', openId === task.id);
+      const actions = document.createElement('div');
+      actions.className = 'task-actions';
+      for (const [label, cls, fn, symbol] of [
+        ['완료', 'done', complete, '✓'],
+        ['+1일', 'later', postpone, '↗'],
+        ['삭제', 'delete', removeTask, '×']
+      ]) {
+        const button = document.createElement('button');
+        button.className = cls;
+        button.type = 'button';
+        button.setAttribute('aria-label', task.title + ' ' + label);
+        const icon = document.createElement('span');
+        icon.style.fontSize = '21px';
+        icon.textContent = symbol;
+        button.append(icon, document.createTextNode(label));
+        button.onclick = () => fn(task.id);
+        actions.append(button);
+      }
+      const card = document.createElement('div');
+      card.className = 'task-card' + (openId === task.id ? ' open' : '');
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', task.title + ' 상세 열기');
+      const title = document.createElement('div');
+      title.className = 'task-title';
+      title.textContent = task.title;
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = (task.category || '내 일') + ' · ' + (task.date || '마감일 없음');
+      card.append(title, meta);
+
+      const menu = document.createElement('button');
+      menu.className = 'task-menu';
+      menu.type = 'button';
+      menu.textContent = '···';
+      menu.setAttribute('aria-label', task.title + ' 작업 메뉴');
+      menu.setAttribute('aria-expanded', String(openId === task.id));
+      menu.onclick = () => {
+        openId = openId === task.id ? null : task.id;
+        render();
+      };
+
+      // 드래그 중에는 카드가 손가락을 따라 움직이고,
+      // 놓으면 속도/거리에 따라 부드럽게 열리거나 닫힙니다.
+      let gesture = null;
+      card.addEventListener('pointerdown', event => {
+        if (event.pointerType === 'mouse' && event.button !== 0) return;
+        gesture = {
+          id: event.pointerId, x: event.clientX, y: event.clientY,
+          time: performance.now(), start: openId === task.id ? -ACTION_WIDTH : 0,
+          axis: null, moved: false
+        };
+      });
+      card.addEventListener('pointermove', event => {
+        if (!gesture || gesture.id !== event.pointerId) return;
+        const dx = event.clientX - gesture.x;
+        const dy = event.clientY - gesture.y;
+        if (!gesture.axis && Math.max(Math.abs(dx), Math.abs(dy)) > 9) {
+          gesture.axis = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'x' : 'y';
+        }
+        if (gesture.axis !== 'x') return;
+        gesture.moved = true;
+        card.classList.add('dragging');
+        const offset = Math.max(-ACTION_WIDTH, Math.min(0, gesture.start + dx));
+        card.style.transform = `translateX(${offset}px)`;
+      });
+      const finish = event => {
+        if (!gesture || gesture.id !== event.pointerId) return;
+        const g = gesture;
+        gesture = null;
+        card.classList.remove('dragging');
+        card.style.transform = '';
+        if (g.axis !== 'x' || !g.moved) return;
+        const dx = event.clientX - g.x;
+        const elapsed = Math.max(1, performance.now() - g.time);
+        const velocity = dx / elapsed;
+        const position = Math.max(-ACTION_WIDTH, Math.min(0, g.start + dx));
+        const shouldOpen = velocity < -0.55 || (velocity <= 0.55 && position < -ACTION_WIDTH * 0.43);
+        openId = shouldOpen ? task.id : null;
+        suppressClickUntil = performance.now() + 400;
+        // render를 피하고 현재 카드를 애니메이션으로 정착시킵니다.
+        document.querySelectorAll('.task-wrap').forEach(w => {
+          const c = w.querySelector('.task-card');
+          const isOpen = w === wrap && shouldOpen;
+          c.classList.toggle('open', isOpen);
+          w.classList.toggle('menu-open', isOpen);
+          const m = w.querySelector('.task-menu');
+          if (m) m.setAttribute('aria-expanded', String(isOpen));
+        });
+      };
+      card.addEventListener('pointerup', finish);
+      card.addEventListener('pointercancel', event => {
+        if (!gesture || gesture.id !== event.pointerId) return;
+        gesture = null;
+        card.classList.remove('dragging');
+        card.style.transform = '';
+      });
+      card.onclick = () => {
+        if (performance.now() < suppressClickUntil) return;
+        if (openId === task.id) {
+          openId = null;
+          render();
+        } else {
+          openEditor(task.id);
+        }
+      };
+      card.onkeydown = event => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openEditor(task.id);
+        }
+      };
+      wrap.append(actions, card, menu);
+      return wrap;
+    }
+    function appendTasks(root, list) {
+      if (!list.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = '등록된 업무가 없어요. + 버튼으로 추가해 보세요.';
+        root.append(empty);
+        return;
+      }
+      for (const task of list) root.append(makeTask(task));
+    }
+    function changeMonth(offset) {
+      month = new Date(month.getFullYear(), month.getMonth() + offset, 1);
+      const selectedDay = Number(selected.slice(8, 10));
+      const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+      selected = localDate(new Date(month.getFullYear(), month.getMonth(), Math.min(selectedDay, lastDay)));
+      openId = null;
+      render();
+    }
+    function renderCalendar(root) {
+      const area = document.createElement('section');
+      area.className = 'calendar-area';
+      const head = document.createElement('div');
+      head.className = 'calendar-head';
+      const prev = document.createElement('button');
+      prev.textContent = '‹';
+      prev.onclick = () => changeMonth(-1);
+      const label = document.createElement('strong');
+      label.textContent = `${month.getFullYear()}년 ${month.getMonth() + 1}월`;
+      const next = document.createElement('button');
+      next.textContent = '›';
+      next.onclick = () => changeMonth(1);
+      head.append(prev, label, next);
+      area.append(head);
+
+      const week = document.createElement('div');
+      week.className = 'week';
+      for (const day of ['일', '월', '화', '수', '목', '금', '토']) {
+        const cell = document.createElement('div');
+        cell.textContent = day;
+        if (day === '일') cell.classList.add('sunday');
+        if (day === '토') cell.classList.add('saturday');
+        week.append(cell);
+      }
+      area.append(week);
+      const grid = document.createElement('div');
+      grid.className = 'days';
+      const first = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
+      const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+      for (let i = 0; i < first; i++) {
+        const blank = document.createElement('div');
+        blank.className = 'day muted';
+        grid.append(blank);
+      }
+      for (let day = 1; day <= days; day++) {
+        const date = localDate(new Date(month.getFullYear(), month.getMonth(), day));
+        const button = document.createElement('button');
+        const weekday = new Date(month.getFullYear(), month.getMonth(), day).getDay();
+        button.className = 'day' + (selected === date ? ' selected' : '')
+          + (weekday === 0 ? ' sunday' : weekday === 6 ? ' saturday' : '');
+        const number = document.createElement('span');
+        number.textContent = day;
+        button.append(number);
+        if (tasks.some(t => !t.done && t.date === date)) {
+          const dot = document.createElement('span');
+          dot.className = 'dot';
+          button.append(dot);
+        }
+        button.onclick = () => { if (performance.now() < suppressClickUntil) return; selected = date; openId = null; render(); };
+        grid.append(button);
+      }
+      area.append(grid);
+      // 달력 안의 좌우 스와이프는 월 이동만 담당합니다.
+      let calendarStart = null;
+      area.addEventListener('touchstart', event => {
+        calendarStart = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+      }, { passive: true });
+      area.addEventListener('touchend', event => {
+        if (!calendarStart) return;
+        const dx = event.changedTouches[0].clientX - calendarStart.x;
+        const dy = event.changedTouches[0].clientY - calendarStart.y;
+        calendarStart = null;
+        if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+          suppressClickUntil = performance.now() + 400;
+          changeMonth(dx < 0 ? 1 : -1);
+          animateContent(dx < 0 ? 1 : -1);
+        }
+      }, { passive: true });
+      root.append(area);
+
+      const sub = document.createElement('div');
+      sub.className = 'date-label';
+      sub.textContent = selected + ' 업무';
+      root.append(sub);
+      // 목록은 별도 높이 제한이 없어 길어지면 페이지를 자연스럽게 세로 스크롤할 수 있음.
+      appendTasks(root, visible().filter(t => t.date === selected));
+    }
+    function render() {
+      const root = $('content');
+      root.replaceChildren();
+      $('heading').textContent = view === 'list' ? '전체 업무' : '달력';
+      $('listTab').classList.toggle('active', view === 'list');
+      $('calendarTab').classList.toggle('active', view === 'calendar');
+      if (view === 'list') {
+        const count = document.createElement('div');
+        count.className = 'count';
+        count.textContent = `남은 업무 ${visible().length}개`;
+        root.append(count);
+        const list = visible();
+        if (sort === 'category' && list.length) {
+          for (const category of categories) {
+            const group = list.filter(t => (t.category || '내 일') === category);
+            if (!group.length) continue;
+            const heading = document.createElement('div');
+            heading.className = 'group-title';
+            heading.textContent = category;
+            root.append(heading);
+            appendTasks(root, group);
+          }
+        } else appendTasks(root, list);
+      } else renderCalendar(root);
+    }
+    // 리스트와 달력 전환은 상단 탭만 사용합니다.
+    // 업무 카드 스와이프와 달력 월 이동 스와이프는 유지합니다.
+
+    render();
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(error => {
+          console.warn('오프라인 캐시 등록 실패:', error);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
