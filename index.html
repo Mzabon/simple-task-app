@@ -4,11 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f8fa">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" href="./icons/icon-192.png" sizes="192x192">
-  <title>나의 작업 관리 · v0.7</title>
+  <link rel="icon" type="image/png" href="./icons/icon-48.png" sizes="48x48">
+  <link rel="apple-touch-icon" href="./icons/icon-180.png">
+  <title>나의 작업 관리 · v0.8</title>
+  <script>
+    // 초기 화면에서 테마가 번쩍이지 않도록 CSS 적용 전에 선택된 테마를 읽습니다.
+    try {
+      const saved = localStorage.getItem('simple-task-theme-v1') || 'system';
+      const dark = saved === 'dark' || (saved === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    } catch { document.documentElement.dataset.theme = 'light'; }
+  </script>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; background: #f7f8fa; color: #242424; font-family: system-ui, 'Noto Sans KR', sans-serif; }
@@ -103,13 +113,99 @@
     .sort-option.chosen { background: #222; color: #fff; }
     .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 12px 18px; border-radius: 12px; font-size: 13px; display: none; max-width: 90vw; }
     button:focus-visible, .task-card:focus-visible { outline: 3px solid #6da2ff; outline-offset: 2px; }
+
+    /* v0.8 화면 및 접근성 설정 */
+    :root {
+      --page: #f7f8fa; --text: #242424; --surface: #fff; --muted: #777;
+      --stroke: #e1e3e7; --soft: #eef0f3; --primary: #222; --on-primary: #fff;
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --page: #15181d; --text: #f0f1f4; --surface: #232832; --muted: #acb4c0;
+      --stroke: #3b4350; --soft: #2b323d; --primary: #f1f3f6; --on-primary: #15181d;
+    }
+    [hidden] { display: none !important; }
+    body { background: var(--page); color: var(--text); }
+    .nav button, .calendar-head button, .day { background: var(--surface); color: var(--text); }
+    .nav .active, .day.selected, .sort-option.chosen { background: var(--primary); color: var(--on-primary); }
+    .add { background: var(--primary); color: var(--on-primary); }
+    .count, .hint, .meta { color: var(--muted); }
+    .task-wrap { background: var(--soft); }
+    .task-card { border-color: var(--stroke); }
+    .modal { background: var(--surface); color: var(--text); }
+    .field input, .field select, .field textarea, .category-color-control select, .settings-text-input { background: var(--surface); color: var(--text); border: 1px solid var(--stroke); }
+    .modal-actions button, .category-row button { background: var(--soft); color: var(--text); }
+    .modal-actions .primary { background: var(--primary); color: var(--on-primary); }
+    .sort-option { background: var(--soft); color: var(--text); }
+    .sort-option.chosen { background: var(--primary); color: var(--on-primary); }
+    .category-item { border-bottom-color: var(--stroke); }
+    .category-item button:disabled { background: var(--soft); color: var(--muted); }
+    .completed-section { border-color: var(--stroke); }
+    .completed-toggle, .completed-note { color: var(--muted); }
+    .calendar-head button, .day { transition: background .15s ease, color .15s ease; }
+    .day.selected { font-weight: 650; }
+    .day.muted { background: transparent; }
+    .calendar-dots { display: flex; align-items: center; justify-content: center; gap: 3px; min-height: 7px; max-width: 100%; }
+    .day .dot, .day.selected .dot { width: 7px; height: 7px; flex-shrink: 0; background: var(--dot-color, #5794e8); }
+    .dot-more { font-size: 9px; line-height: 9px; font-weight: 700; opacity: .85; }
+    .header-actions { display: flex; align-items: center; gap: 9px; }
+    .icon-button { width: 46px; height: 46px; border-radius: 13px; background: var(--surface); color: var(--text); font-size: 22px; display: inline-flex; align-items: center; justify-content: center; }
+    .back-button { font-size: 14px; width: auto; padding: 0 15px; gap: 6px; }
+    .settings-list { display: flex; flex-direction: column; gap: 10px; }
+    .settings-link { width: 100%; border-radius: 14px; padding: 17px 16px; background: var(--surface); color: var(--text); text-align: left; display: flex; align-items: center; gap: 14px; }
+    .settings-link .settings-icon { font-size: 22px; width: 29px; text-align: center; }
+    .settings-link .settings-label { flex: 1; }
+    .settings-link strong, .settings-link small { display: block; }
+    .settings-link small { margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .settings-link .chevron { color: var(--muted); }
+    .settings-subtitle { margin: 4px 0 18px; font-size: 13px; line-height: 1.65; color: var(--muted); }
+    .settings-group { background: var(--surface); border: 1px solid var(--stroke); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+    .settings-group h2 { font-size: 16px; margin: 0 0 10px; }
+    .settings-row { display: flex; gap: 9px; align-items: center; justify-content: space-between; }
+    .settings-button { padding: 11px 15px; border-radius: 10px; background: var(--soft); color: var(--text); font-size: 13px; font-weight: 600; }
+    .settings-button.primary { background: var(--primary); color: var(--on-primary); }
+    .settings-button:disabled { opacity: .45; cursor: default; }
+    .settings-text-input { width: 100%; border-radius: 10px; padding: 12px; }
+    .settings-category-row { display: flex; flex-direction: column; gap: 9px; padding: 14px 0; border-bottom: 1px solid var(--stroke); }
+    .settings-category-row:last-child { border-bottom: 0; }
+    .settings-category-label { display: flex; align-items: center; gap: 10px; font-weight: 650; }
+    .settings-category-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .settings-category-controls select { min-width: 0; flex: 1; border: 1px solid var(--stroke); background: var(--surface); color: var(--text); padding: 10px; border-radius: 10px; }
+    .settings-category-controls .settings-button { flex-shrink: 0; }
+    .settings-radio { display: flex; gap: 12px; align-items: center; padding: 12px 0; cursor: pointer; }
+    .settings-radio + .settings-radio { border-top: 1px solid var(--stroke); }
+    .settings-radio input { accent-color: #6091ef; width: 18px; height: 18px; }
+    .settings-status { font-size: 12px; line-height: 1.6; color: var(--muted); }
+    #updateNotice { position: fixed; z-index: 20; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(94vw, 480px); padding: 16px; border-radius: 15px; border: 1px solid var(--stroke); background: var(--surface); box-shadow: 0 12px 40px #0003; }
+    #updateNotice strong { display: block; margin-bottom: 5px; }
+    .update-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 12px; }
+    .toast { z-index: 30; }
+    html[data-theme="dark"] .task-card.completed { background: #303640 !important; border-color: #46505e !important; color: #aab2bd; }
+    html[data-theme="dark"] .task-card.completed .meta, html[data-theme="dark"] .complete-mark { color: #aeb6bf; }
+    html[data-theme="dark"] .task-menu { background: #3d4653; color: #f0f1f4; }
+    html[data-theme="dark"] .empty { color: #a8b1bf; }
+    html[data-theme="dark"] .done { background: #204c35; color: #d3f8df; }
+    html[data-theme="dark"] .later { background: #233f65; color: #d7e7ff; }
+    html[data-theme="dark"] .delete { background: #5c292e; color: #ffe0e1; }
+    html[data-theme="dark"] .task-card:not(.completed) .meta { color: #ccd3dd; }
+    @media (max-width: 480px) {
+      .header-actions { gap: 7px; }
+      .icon-button, .add { width: 43px; height: 43px; }
+      .day .dot { width: 6px; height: 6px; }
+      .calendar-dots { gap: 2px; }
+      .settings-category-controls .settings-button { padding: 10px; }
+    }
   </style>
 </head>
 <body>
   <main>
     <header class="top">
       <h1 id="heading">전체 업무</h1>
-      <button class="add" id="add" aria-label="업무 추가">+</button>
+      <div class="header-actions">
+        <button class="icon-button" id="backSettings" aria-label="뒤로 가기" hidden>← 뒤로</button>
+        <button class="icon-button" id="settingsButton" aria-label="설정 열기" title="설정">⚙</button>
+        <button class="add" id="add" aria-label="업무 추가">+</button>
+      </div>
     </header>
     <nav class="nav">
       <button id="listTab" class="active">리스트</button>
@@ -117,6 +213,54 @@
       <button id="sortButton">정렬 ↕</button>
     </nav>
     <div id="content"></div>
+    <section id="settingsPage" hidden aria-label="설정 화면">
+      <div id="settingsHome" class="settings-list">
+        <button type="button" class="settings-link" data-setting="category"><span class="settings-icon">🎨</span><span class="settings-label"><strong>종류 관리</strong><small>종류 추가 · 이름 변경 · 색상 · 삭제</small></span><span class="chevron">›</span></button>
+        <button type="button" class="settings-link" data-setting="data"><span class="settings-icon">▤</span><span class="settings-label"><strong>데이터 관리</strong><small>업무·완료 기록 백업 및 복원</small></span><span class="chevron">›</span></button>
+        <button type="button" class="settings-link" data-setting="appearance"><span class="settings-icon">◐</span><span class="settings-label"><strong>화면 설정</strong><small>라이트 · 다크 · 기기 설정</small></span><span class="chevron">›</span></button>
+        <button type="button" class="settings-link" data-setting="about"><span class="settings-icon">ⓘ</span><span class="settings-label"><strong>앱 정보</strong><small>앱 버전 및 업데이트 확인</small></span><span class="chevron">›</span></button>
+      </div>
+      <div id="settingsCategoryPage" hidden>
+        <p class="settings-subtitle">종류별 이름과 색상을 변경할 수 있어요. 종류를 삭제해도 업무 자체는 삭제되지 않고 '미분류'로 이동합니다.</p>
+        <div class="settings-group" id="settingsCategoryList"></div>
+        <form id="settingsCategoryForm" class="settings-group">
+          <h2>새 종류 추가</h2>
+          <label class="field">종류 이름<input class="settings-text-input" id="settingsCategoryName" maxlength="30" required placeholder="예: 회의"></label>
+          <button type="submit" class="settings-button primary">+ 종류 추가</button>
+        </form>
+      </div>
+      <div id="settingsDataPage" hidden>
+        <p class="settings-subtitle">지금은 업무가 이 기기에만 저장됩니다. 중요한 업무는 주기적으로 백업 파일을 보관해 주세요.</p>
+        <div class="settings-group">
+          <h2>데이터 내보내기</h2>
+          <p class="settings-status">전체 업무, 완료 기록, 종류 및 색상, 설정을 하나의 JSON 파일로 저장합니다.</p>
+          <button type="button" id="exportData" class="settings-button primary">↓ 백업 파일 저장</button>
+        </div>
+        <div class="settings-group">
+          <h2>데이터 가져오기</h2>
+          <p class="settings-status">이 앱에서 내보낸 JSON 파일만 가져올 수 있습니다. 기존 업무를 새 데이터로 교체하기 전에 확인합니다.</p>
+          <button type="button" id="importData" class="settings-button">↑ 백업 파일 선택</button>
+          <input id="importFile" type="file" accept=".json,application/json" hidden aria-label="업무 백업 파일 선택">
+        </div>
+        <p class="settings-status">복원 전에 현재 데이터를 먼저 내보내 두는 것을 권장합니다. 파일은 서버로 전송되지 않습니다.</p>
+      </div>
+      <div id="settingsAppearancePage" hidden>
+        <p class="settings-subtitle">선택한 화면 모드는 이 기기에 저장됩니다.</p>
+        <div class="settings-group">
+          <label class="settings-radio"><input type="radio" name="themeMode" value="light"> 라이트 모드</label>
+          <label class="settings-radio"><input type="radio" name="themeMode" value="dark"> 다크 모드</label>
+          <label class="settings-radio"><input type="radio" name="themeMode" value="system"> 기기 설정에 맞추기</label>
+        </div>
+      </div>
+      <div id="settingsAboutPage" hidden>
+        <div class="settings-group">
+          <h2>나의 작업 관리</h2>
+          <p class="settings-status">버전 v0.8 · 설치형 PWA</p>
+          <p class="settings-status">데이터는 현재 기기에 보관됩니다. 클라우드 동기화는 아직 지원하지 않습니다.</p>
+          <button type="button" id="checkUpdates" class="settings-button">↻ 업데이트 확인</button>
+        </div>
+      </div>
+    </section>
   </main>
 
   <dialog class="modal" id="editor">
@@ -140,7 +284,7 @@
 
   <dialog class="modal" id="categoryDialog">
     <h2>업무 종류 관리</h2>
-    <p class="hint">기본 종류는 삭제할 수 없어요. 추가한 종류를 삭제하면 해당 업무는 '내 일'로 이동합니다.</p>
+    <p class="hint">종류를 삭제해도 업무는 남으며 '미분류'로 이동합니다. '미분류'는 삭제할 수 없습니다.</p>
     <div id="categoryList"></div>
     <form id="categoryForm">
       <label class="field">새 종류 이름<input id="categoryName" maxlength="30" required placeholder="예: 회의"></label>
@@ -151,12 +295,31 @@
     </form>
   </dialog>
 
+  <dialog class="modal" id="renameCategoryDialog">
+    <h2>종류 이름 변경</h2>
+    <form id="renameCategoryForm">
+      <label class="field">새 종류 이름<input id="renameCategoryInput" maxlength="30" required></label>
+      <div class="modal-actions">
+        <button type="button" id="closeRename">취소</button>
+        <button type="submit" class="primary">변경</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog class="modal" id="sortDialog">
     <h2>정렬 기준</h2>
     <button class="sort-option" data-sort="date">마감일 빠른 순</button>
     <button class="sort-option" data-sort="category">업무 종류별 순서</button>
     <div class="modal-actions"><button id="closeSort">취소</button></div>
   </dialog>
+  <div id="updateNotice" hidden role="status" aria-live="polite">
+    <strong>새 버전이 준비되었어요</strong>
+    <span class="settings-status">업데이트를 적용하면 앱 화면이 새로 열립니다. 업무 데이터는 그대로 유지됩니다.</span>
+    <div class="update-actions">
+      <button type="button" class="settings-button" id="updateLater">나중에</button>
+      <button type="button" class="settings-button primary" id="applyUpdate">업데이트</button>
+    </div>
+  </div>
   <div class="toast" id="toast" role="status"></div>
 
   <script>
@@ -164,15 +327,20 @@
     const KEY = 'simple-task-v2'; // 기존 v0.2 데이터 유지
     const CATKEY = 'simple-task-categories-v1';
     const COLORKEY = 'simple-task-category-colors-v1';
+    const CATIDKEY = 'simple-task-category-ids-v1';
+    const THEMEKEY = 'simple-task-theme-v1';
+    const SORTKEY = 'simple-task-sort-v1';
+    const FORMAT = 'simple-task-app-backup';
+    const FALLBACK_CATEGORY = '미분류';
     const PALETTE = [
-      { name: '파랑', bg: '#e7f1ff', border: '#c4dcfc' },
-      { name: '초록', bg: '#e6f5eb', border: '#c0e5cd' },
-      { name: '주황', bg: '#fff0df', border: '#f4d6b5' },
-      { name: '보라', bg: '#f0e9ff', border: '#dbccfa' },
-      { name: '분홍', bg: '#ffeaf0', border: '#f7cad8' },
-      { name: '노랑', bg: '#fff7d9', border: '#f0e3ab' },
-      { name: '청록', bg: '#e1f5f2', border: '#b8e5de' },
-      { name: '회색', bg: '#edf0f4', border: '#d6dce5' }
+      { name: '파랑', bg: '#e7f1ff', border: '#c4dcfc', dot: '#4787dc', dark: '#293d5c' },
+      { name: '초록', bg: '#e6f5eb', border: '#c0e5cd', dot: '#339d65', dark: '#244936' },
+      { name: '주황', bg: '#fff0df', border: '#f4d6b5', dot: '#db8b33', dark: '#513a29' },
+      { name: '보라', bg: '#f0e9ff', border: '#dbccfa', dot: '#9064d7', dark: '#3f335c' },
+      { name: '분홍', bg: '#ffeaf0', border: '#f7cad8', dot: '#d95f8c', dark: '#533043' },
+      { name: '노랑', bg: '#fff7d9', border: '#f0e3ab', dot: '#b18a2b', dark: '#4c4427' },
+      { name: '청록', bg: '#e1f5f2', border: '#b8e5de', dot: '#229c91', dark: '#264947' },
+      { name: '회색', bg: '#edf0f4', border: '#d6dce5', dot: '#738397', dark: '#3b4452' }
     ];
     const DEFAULTS = ['수업', '학년', '내 일', '개인업무'];
     const $ = id => document.getElementById(id);
@@ -188,9 +356,21 @@
       if (!Array.isArray(tasks)) tasks = [];
       localStorage.setItem(KEY, JSON.stringify(tasks));
     }
-    let categories = read(CATKEY, [...DEFAULTS]);
+    let categories = read(CATKEY, null);
     if (!Array.isArray(categories)) categories = [...DEFAULTS];
-    categories = [...new Set([...DEFAULTS, ...categories, ...tasks.map(t => t.category).filter(Boolean)])];
+    categories = [...new Set([...categories.filter(name => typeof name === 'string' && name.trim()), ...tasks.map(t => t.category).filter(Boolean), FALLBACK_CATEGORY])];
+    let categoryIds = read(CATIDKEY, {});
+    if (!categoryIds || typeof categoryIds !== 'object' || Array.isArray(categoryIds)) categoryIds = {};
+    categories.forEach(name => {
+      if (typeof categoryIds[name] !== 'string' || !categoryIds[name]) categoryIds[name] = crypto.randomUUID();
+    });
+    // v0.7 업무 정보는 건드리지 않고, 동기화를 위한 식별자·수정 시각만 추가합니다.
+    tasks.forEach(task => {
+      if (!task.id) task.id = crypto.randomUUID();
+      if (!task.category) task.category = FALLBACK_CATEGORY;
+      if (!task.categoryId) task.categoryId = categoryIds[task.category];
+      if (!task.updatedAt) task.updatedAt = new Date(task.created || Date.now()).toISOString();
+    });
 
     let categoryColors = read(COLORKEY, {});
     if (!categoryColors || typeof categoryColors !== 'object' || Array.isArray(categoryColors)) categoryColors = {};
@@ -201,11 +381,29 @@
       }
     });
     function colorFor(name) {
-      return PALETTE[categoryColors[name] ?? 0];
+      return PALETTE[categoryColors[name] ?? 0] || PALETTE[0];
     }
+    function isDark() { return document.documentElement.dataset.theme === 'dark'; }
+    function cardColorFor(name) {
+      const color = colorFor(name);
+      return isDark() ? { bg: color.dark, border: color.dot } : color;
+    }
+    let themeMode = localStorage.getItem(THEMEKEY) || 'system';
+    if (!['light', 'dark', 'system'].includes(themeMode)) themeMode = 'system';
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+    function applyTheme() {
+      const dark = themeMode === 'dark' || (themeMode === 'system' && systemTheme.matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.querySelector('meta[name="theme-color"]').content = dark ? '#15181d' : '#f7f8fa';
+    }
+    applyTheme();
+    systemTheme.addEventListener('change', () => { if (themeMode === 'system') { applyTheme(); render(); } });
 
     let view = 'list';
-    let sort = 'date';
+    let previousView = 'list';
+    let settingsPanel = 'home';
+    let sort = localStorage.getItem(SORTKEY) || 'date';
+    if (!['date', 'category'].includes(sort)) sort = 'date';
     let editing = null;
     let openId = null;
     let showCompletedList = false;
@@ -213,6 +411,7 @@
     const now = new Date();
     let month = new Date(now.getFullYear(), now.getMonth(), 1);
     let selected = localDate(now);
+    let explicitlySelectedDate = false;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const ACTION_WIDTH = 225;
     let viewAnimating = false;
@@ -230,10 +429,17 @@
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
     function persist() {
-      localStorage.setItem(KEY, JSON.stringify(tasks));
-      localStorage.setItem(CATKEY, JSON.stringify(categories));
-      localStorage.setItem(COLORKEY, JSON.stringify(categoryColors));
+      try {
+        localStorage.setItem(KEY, JSON.stringify(tasks));
+        localStorage.setItem(CATKEY, JSON.stringify(categories));
+        localStorage.setItem(COLORKEY, JSON.stringify(categoryColors));
+        localStorage.setItem(CATIDKEY, JSON.stringify(categoryIds));
+      } catch (error) {
+        console.error('업무 저장 실패:', error);
+        notify('저장 공간을 확인해 주세요. 데이터 저장에 실패했어요.');
+      }
       render();
+      if (view === 'settings' && settingsPanel === 'category') renderCategoryList();
     }
     function notify(message) {
       const element = $('toast');
@@ -267,6 +473,32 @@
     $('calendarTab').onclick = () => setView('calendar');
     $('add').onclick = () => openEditor();
     $('cancel').onclick = () => $('editor').close();
+    $('settingsButton').onclick = () => {
+      if (view !== 'settings') previousView = view;
+      view = 'settings';
+      settingsPanel = 'home';
+      render();
+    };
+    $('backSettings').onclick = () => {
+      if (settingsPanel !== 'home') settingsPanel = 'home';
+      else view = previousView;
+      render();
+    };
+    document.querySelectorAll('[data-setting]').forEach(button => {
+      button.onclick = () => {
+        settingsPanel = button.dataset.setting;
+        render();
+        if (settingsPanel === 'category') renderCategoryList();
+      };
+    });
+    document.querySelectorAll('input[name="themeMode"]').forEach(input => {
+      input.onchange = () => {
+        themeMode = input.value;
+        localStorage.setItem(THEMEKEY, themeMode);
+        applyTheme();
+        render();
+      };
+    });
 
     $('sortButton').onclick = () => {
       document.querySelectorAll('.sort-option').forEach(button => {
@@ -277,6 +509,7 @@
     document.querySelectorAll('.sort-option').forEach(button => {
       button.onclick = () => {
         sort = button.dataset.sort;
+        localStorage.setItem(SORTKEY, sort);
         $('sortDialog').close();
         render();
       };
@@ -293,48 +526,100 @@
       }
       $('category').value = categories.includes(value) ? value : '내 일';
     }
-    function renderCategoryList() {
-      const root = $('categoryList');
-      root.replaceChildren();
-      for (const name of categories) {
-        const row = document.createElement('div');
-        row.className = 'category-item';
-        const label = document.createElement('span');
-        label.textContent = name;
-        const button = document.createElement('button');
-        button.textContent = DEFAULTS.includes(name) ? '기본 종류' : '삭제';
-        button.disabled = DEFAULTS.includes(name);
-        button.onclick = () => {
-          if (!confirm(`'${name}' 종류를 삭제할까요? 소속 업무는 '내 일'로 이동합니다.`)) return;
-          categories = categories.filter(c => c !== name);
-          delete categoryColors[name];
-          tasks.forEach(t => { if (t.category === name) t.category = '내 일'; });
-          fillCategories('내 일');
-          persist();
-          renderCategoryList();
-        };
-        const controls = document.createElement('div');
-        controls.className = 'category-color-control';
-        const swatch = document.createElement('span');
-        swatch.className = 'category-swatch';
-        swatch.style.background = colorFor(name).bg;
-        const picker = document.createElement('select');
-        picker.setAttribute('aria-label', name + ' 색상 선택');
-        PALETTE.forEach((color, index) => {
-          const option = document.createElement('option');
-          option.value = String(index);
-          option.textContent = color.name;
-          picker.append(option);
+    let renamingCategory = null;
+    function renameCategory(name) {
+      if (name === FALLBACK_CATEGORY) return;
+      renamingCategory = name;
+      $('renameCategoryInput').value = name;
+      $('renameCategoryDialog').showModal();
+    }
+    $('closeRename').onclick = () => $('renameCategoryDialog').close();
+    $('renameCategoryForm').onsubmit = event => {
+      event.preventDefault();
+      if (!renamingCategory) return;
+      const next = $('renameCategoryInput').value.trim();
+      if (!next) return;
+      if (next !== renamingCategory && categories.includes(next)) { notify('이미 있는 종류입니다'); return; }
+      if (next !== renamingCategory) {
+        const old = renamingCategory;
+        categories = categories.map(name => name === old ? next : name);
+        categoryColors[next] = categoryColors[old];
+        categoryIds[next] = categoryIds[old];
+        delete categoryColors[old];
+        delete categoryIds[old];
+        tasks.forEach(task => {
+          if (task.category === old) { task.category = next; task.categoryId = categoryIds[next]; task.updatedAt = new Date().toISOString(); }
         });
-        picker.value = String(categoryColors[name] ?? 0);
-        picker.onchange = () => {
-          categoryColors[name] = Number(picker.value);
+        fillCategories(next);
+        persist();
+      }
+      $('renameCategoryDialog').close();
+      renamingCategory = null;
+      renderCategoryList();
+    };
+    function removeCategory(name) {
+      if (name === FALLBACK_CATEGORY) return;
+      if (!confirm(`'${name}' 종류를 삭제할까요? 해당 업무는 '${FALLBACK_CATEGORY}'로 옮겨지고 삭제되지 않습니다.`)) return;
+      categories = categories.filter(c => c !== name);
+      delete categoryColors[name];
+      delete categoryIds[name];
+      tasks.forEach(task => {
+        if (task.category === name) {
+          task.category = FALLBACK_CATEGORY;
+          task.categoryId = categoryIds[FALLBACK_CATEGORY];
+          task.updatedAt = new Date().toISOString();
+        }
+      });
+      fillCategories(FALLBACK_CATEGORY);
+      persist();
+      renderCategoryList();
+    }
+    function renderCategoryList() {
+      for (const rootId of ['categoryList', 'settingsCategoryList']) {
+        const root = $(rootId);
+        root.replaceChildren();
+        for (const name of categories) {
+          const row = document.createElement('div');
+          row.className = 'settings-category-row';
+          const label = document.createElement('div');
+          label.className = 'settings-category-label';
+          const swatch = document.createElement('span');
+          swatch.className = 'category-swatch';
           swatch.style.background = colorFor(name).bg;
-          persist();
-        };
-        controls.append(swatch, picker, button);
-        row.append(label, controls);
-        root.append(row);
+          const title = document.createElement('span');
+          title.textContent = name;
+          label.append(swatch, title);
+          const controls = document.createElement('div');
+          controls.className = 'settings-category-controls';
+          const picker = document.createElement('select');
+          picker.setAttribute('aria-label', name + ' 색상 선택');
+          PALETTE.forEach((color, index) => {
+            const option = document.createElement('option');
+            option.value = String(index);
+            option.textContent = color.name;
+            picker.append(option);
+          });
+          picker.value = String(categoryColors[name] ?? 0);
+          picker.onchange = () => {
+            categoryColors[name] = Number(picker.value);
+            persist();
+          };
+          const renameButton = document.createElement('button');
+          renameButton.type = 'button';
+          renameButton.className = 'settings-button';
+          renameButton.textContent = '이름 변경';
+          renameButton.disabled = name === FALLBACK_CATEGORY;
+          renameButton.onclick = () => renameCategory(name);
+          const del = document.createElement('button');
+          del.type = 'button';
+          del.className = 'settings-button';
+          del.textContent = '삭제';
+          del.disabled = name === FALLBACK_CATEGORY;
+          del.onclick = () => removeCategory(name);
+          controls.append(picker, renameButton, del);
+          row.append(label, controls);
+          root.append(row);
+        }
       }
     }
     $('manageCategories').onclick = () => {
@@ -342,25 +627,33 @@
       $('categoryDialog').showModal();
     };
     $('closeCategories').onclick = () => $('categoryDialog').close();
-    $('categoryForm').onsubmit = event => {
-      event.preventDefault();
-      const name = $('categoryName').value.trim();
-      if (!name) return;
-      if (categories.includes(name)) { notify('이미 있는 종류입니다'); return; }
+    function addCategory(name) {
+      name = name.trim();
+      if (!name) return false;
+      if (categories.includes(name)) { notify('이미 있는 종류입니다'); return false; }
       categories.push(name);
+      categoryIds[name] = crypto.randomUUID();
       categoryColors[name] = (categories.length - 1) % PALETTE.length;
-      $('categoryName').value = '';
       fillCategories(name);
       persist();
       renderCategoryList();
+      return true;
+    }
+    $('categoryForm').onsubmit = event => {
+      event.preventDefault();
+      if (addCategory($('categoryName').value)) $('categoryName').value = '';
+    };
+    $('settingsCategoryForm').onsubmit = event => {
+      event.preventDefault();
+      if (addCategory($('settingsCategoryName').value)) $('settingsCategoryName').value = '';
     };
 
-    function openEditor(id = null) {
+    function openEditor(id = null, presetDate = null) {
       editing = id;
       const task = tasks.find(t => t.id === id);
       $('editorTitle').textContent = task ? '업무 상세 · 수정' : '새 업무';
       $('title').value = task?.title || '';
-      $('date').value = task?.date || '';
+      $('date').value = task?.date || presetDate || '';
       $('detail').value = task?.detail || '';
       fillCategories(task?.category);
       $('editor').showModal();
@@ -375,11 +668,12 @@
         date: $('date').value,
         detail: $('detail').value
       };
+      const updatedAt = new Date().toISOString();
       if (editing) {
         const task = tasks.find(t => t.id === editing);
-        if (task) Object.assign(task, data);
+        if (task) Object.assign(task, data, { categoryId: categoryIds[data.category], updatedAt });
       } else {
-        tasks.push({ id: crypto.randomUUID(), ...data, done: false, created: Date.now() });
+        tasks.push({ id: crypto.randomUUID(), ...data, categoryId: categoryIds[data.category], done: false, created: Date.now(), updatedAt, completedAt: null });
       }
       $('editor').close();
       persist();
@@ -390,6 +684,7 @@
       if (!task) return;
       task.done = true;
       task.completedAt = new Date().toISOString();
+      task.updatedAt = task.completedAt;
       openId = null;
       persist();
       notify('완료한 업무에 보관했어요');
@@ -399,6 +694,7 @@
       if (!task) return;
       task.done = false;
       task.completedAt = null;
+      task.updatedAt = new Date().toISOString();
       openId = null;
       persist();
       notify('미완료 업무로 되돌렸어요');
@@ -453,6 +749,7 @@
       const date = task.date ? new Date(task.date + 'T12:00:00') : new Date();
       date.setDate(date.getDate() + 1);
       task.date = localDate(date);
+      task.updatedAt = new Date().toISOString();
       openId = null;
       persist();
       notify('마감일을 하루 미뤘어요');
@@ -481,7 +778,7 @@
       }
       const card = document.createElement('div');
       card.className = 'task-card' + (openId === task.id ? ' open' : '');
-      const cardColor = colorFor(task.category || '내 일');
+      const cardColor = cardColorFor(task.category || FALLBACK_CATEGORY);
       card.style.backgroundColor = cardColor.bg;
       card.style.borderColor = cardColor.border;
       card.classList.toggle('completed', !!task.done);
@@ -606,6 +903,8 @@
       const selectedDay = Number(selected.slice(8, 10));
       const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
       selected = localDate(new Date(month.getFullYear(), month.getMonth(), Math.min(selectedDay, lastDay)));
+      explicitlySelectedDate = false;
+      showCompletedDay = false;
       openId = null;
       render();
     }
@@ -653,14 +952,37 @@
         const number = document.createElement('span');
         number.textContent = day;
         button.append(number);
-        const hasPending = tasks.some(t => !t.done && t.date === date);
-        const hasCompleted = tasks.some(t => t.done && t.date === date);
-        if (hasPending || hasCompleted) {
-          const dot = document.createElement('span');
-          dot.className = 'dot' + (!hasPending ? ' completed-dot' : '');
-          button.append(dot);
-        }
-        button.onclick = () => { if (performance.now() < suppressClickUntil) return; selected = date; openId = null; render(); };
+        const dayTasks = tasks.filter(task => task.date === date);
+        const kinds = [...new Set(dayTasks.map(task => task.category || FALLBACK_CATEGORY))];
+        if (kinds.length) {
+          const dots = document.createElement('span');
+          dots.className = 'calendar-dots';
+          dots.setAttribute('aria-hidden', 'true');
+          for (const kind of kinds.slice(0, 4)) {
+            const dot = document.createElement('span');
+            dot.className = 'dot';
+            dot.style.setProperty('--dot-color', colorFor(kind).dot);
+            if (!dayTasks.some(task => !task.done && (task.category || FALLBACK_CATEGORY) === kind)) dot.style.opacity = '0.63';
+            dots.append(dot);
+          }
+          if (kinds.length > 4) {
+            const more = document.createElement('span');
+            more.className = 'dot-more';
+            more.textContent = '+' + (kinds.length - 4);
+            dots.append(more);
+          }
+          button.append(dots);
+          button.setAttribute('aria-label', `${date}, ${dayTasks.length}개 업무, ${kinds.length}개 종류`);
+        } else button.setAttribute('aria-label', date);
+        button.onclick = () => {
+          if (performance.now() < suppressClickUntil) return;
+          if (selected === date && explicitlySelectedDate) { openEditor(null, date); return; }
+          selected = date;
+          explicitlySelectedDate = true;
+          showCompletedDay = false;
+          openId = null;
+          render();
+        };
         grid.append(button);
       }
       area.append(grid);
@@ -698,6 +1020,24 @@
       completedSection(root, completedTasks(selected), true);
     }
     function render() {
+      const inSettings = view === 'settings';
+      $('content').hidden = inSettings;
+      document.querySelector('.nav').hidden = inSettings;
+      $('settingsPage').hidden = !inSettings;
+      $('settingsButton').hidden = inSettings;
+      $('add').hidden = inSettings;
+      $('backSettings').hidden = !inSettings;
+      if (inSettings) {
+        const titles = { home: '설정', category: '종류 관리', data: '데이터 관리', appearance: '화면 설정', about: '앱 정보' };
+        $('heading').textContent = titles[settingsPanel] || '설정';
+        $('backSettings').textContent = settingsPanel === 'home' ? '← 돌아가기' : '← 설정';
+        $('settingsHome').hidden = settingsPanel !== 'home';
+        for (const id of ['category', 'data', 'appearance', 'about']) {
+          $('settings' + id[0].toUpperCase() + id.slice(1) + 'Page').hidden = settingsPanel !== id;
+        }
+        document.querySelectorAll('input[name="themeMode"]').forEach(input => { input.checked = input.value === themeMode; });
+        return;
+      }
       const root = $('content');
       root.replaceChildren();
       $('heading').textContent = view === 'list' ? '전체 업무' : '달력';
@@ -732,12 +1072,163 @@
     // 리스트와 달력 전환은 상단 탭만 사용합니다.
     // 업무 카드 스와이프와 달력 월 이동 스와이프는 유지합니다.
 
+    // 데이터 내보내기와 복원: 이전 v0.7 저장 키를 그대로 사용합니다.
+    function buildBackup() {
+      return {
+        appId: FORMAT, schemaVersion: 1, appVersion: '0.8', exportedAt: new Date().toISOString(),
+        data: {
+          tasks, categories, categoryColors, categoryIds,
+          preferences: { theme: themeMode, sort }
+        }
+      };
+    }
+    $('exportData').onclick = () => {
+      try {
+        const blob = new Blob([JSON.stringify(buildBackup(), null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const d = new Date();
+        a.href = url;
+        a.download = `task-backup-${localDate(d)}-${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}.json`;
+        document.body.append(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        notify('백업 파일을 저장했어요. 다운로드 폴더를 확인해 주세요.');
+      } catch (error) {
+        console.error(error);
+        notify('백업 파일을 만들지 못했어요.');
+      }
+    };
+    $('importData').onclick = () => $('importFile').click();
+    function validateBackup(value) {
+      if (!value || value.appId !== FORMAT || value.schemaVersion !== 1 || !value.data) {
+        throw Error('이 앱에서 만든 백업 파일이 아니에요.');
+      }
+      const data = value.data;
+      if (!Array.isArray(data.tasks) || !Array.isArray(data.categories) || !data.categoryColors ||
+          typeof data.categoryColors !== 'object' || Array.isArray(data.categoryColors) ||
+          data.tasks.length > 30000 || data.categories.length > 1000) throw Error('백업 데이터 형식이 올바르지 않아요.');
+      if (!data.categories.every(name => typeof name === 'string' && name.trim() && name.length <= 30)) throw Error('종류 데이터가 손상되었어요.');
+      const incomingCategories = [...new Set([...data.categories, FALLBACK_CATEGORY])];
+      const incomingColors = {};
+      const incomingIds = {};
+      for (const [i, name] of incomingCategories.entries()) {
+        const raw = data.categoryColors[name];
+        incomingColors[name] = Number.isInteger(raw) && raw >= 0 && raw < PALETTE.length ? raw : i % PALETTE.length;
+        const savedId = data.categoryIds && data.categoryIds[name];
+        incomingIds[name] = typeof savedId === 'string' && savedId ? savedId : crypto.randomUUID();
+      }
+      const ids = new Set();
+      const importedTasks = data.tasks.map(t => {
+        if (!t || typeof t !== 'object' || typeof t.title !== 'string' || !t.title.trim() || t.title.length > 100 ||
+            (t.detail != null && typeof t.detail !== 'string') || (t.category != null && typeof t.category !== 'string') ||
+            (t.date != null && typeof t.date !== 'string') || (t.date && !/^\d{4}-\d{2}-\d{2}$/.test(t.date))) {
+          throw Error('업무 데이터에 올바르지 않은 값이 있어요.');
+        }
+        const id = typeof t.id === 'string' && t.id ? t.id : crypto.randomUUID();
+        if (ids.has(id)) throw Error('중복된 업무 번호가 있어요.');
+        ids.add(id);
+        const category = t.category || FALLBACK_CATEGORY;
+        if (!incomingCategories.includes(category)) {
+          incomingCategories.push(category);
+          incomingColors[category] = incomingCategories.length % PALETTE.length;
+          incomingIds[category] = crypto.randomUUID();
+        }
+        return {
+          id, title: t.title, detail: t.detail || '', category,
+          categoryId: incomingIds[category], date: t.date || '', done: !!t.done,
+          completedAt: typeof t.completedAt === 'string' ? t.completedAt : null,
+          created: typeof t.created === 'number' && Number.isFinite(t.created) ? t.created : Date.now(),
+          updatedAt: typeof t.updatedAt === 'string' && t.updatedAt ? t.updatedAt : new Date().toISOString()
+        };
+      });
+      const prefs = data.preferences || {};
+      return {
+        tasks: importedTasks, categories: incomingCategories, categoryColors: incomingColors, categoryIds: incomingIds,
+        theme: ['system','dark','light'].includes(prefs.theme) ? prefs.theme : 'system',
+        sort: ['date','category'].includes(prefs.sort) ? prefs.sort : 'date'
+      };
+    }
+    $('importFile').onchange = async event => {
+      const file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) { notify('10MB 이하의 백업 파일만 가져올 수 있어요.'); return; }
+      try {
+        const incoming = validateBackup(JSON.parse(await file.text()));
+        if (!confirm(`백업 파일에 업무 ${incoming.tasks.length}개가 있습니다.\n현재 기기의 업무 ${tasks.length}개를 모두 교체할까요?\n기존 데이터가 필요하면 먼저 내보내기 해주세요.`)) return;
+        const keys = [KEY, CATKEY, COLORKEY, CATIDKEY, THEMEKEY, SORTKEY];
+        const originals = Object.fromEntries(keys.map(key => [key, localStorage.getItem(key)]));
+        // 교체 직전 상태를 복구할 수 있도록 한 번 더 보관합니다.
+        localStorage.setItem('simple-task-preimport-v08', JSON.stringify(originals));
+        try {
+          localStorage.setItem(KEY, JSON.stringify(incoming.tasks));
+          localStorage.setItem(CATKEY, JSON.stringify(incoming.categories));
+          localStorage.setItem(COLORKEY, JSON.stringify(incoming.categoryColors));
+          localStorage.setItem(CATIDKEY, JSON.stringify(incoming.categoryIds));
+          localStorage.setItem(THEMEKEY, incoming.theme);
+          localStorage.setItem(SORTKEY, incoming.sort);
+        } catch (writeError) {
+          for (const key of keys) {
+            try { if (originals[key] === null) localStorage.removeItem(key); else localStorage.setItem(key, originals[key]); } catch (error) { console.error('복원 중 원상 복구 실패', key, error); }
+          }
+          throw writeError;
+        }
+        tasks = incoming.tasks;
+        categories = incoming.categories;
+        categoryColors = incoming.categoryColors;
+        categoryIds = incoming.categoryIds;
+        themeMode = incoming.theme;
+        sort = incoming.sort;
+        openId = null;
+        applyTheme();
+        render();
+        notify('백업을 복원했어요.');
+      } catch (error) {
+        console.error('백업 가져오기 실패:', error);
+        alert('가져오지 못했어요. 기존 데이터를 유지합니다.\n' + (error.message || '파일을 확인해 주세요.'));
+      }
+    };
+
+    let swRegistration = null;
+    let applyingUpdate = false;
+    function showUpdateNotice() { $('updateNotice').hidden = false; }
+    $('updateLater').onclick = () => { $('updateNotice').hidden = true; };
+    $('applyUpdate').onclick = () => {
+      if (!swRegistration?.waiting) { notify('업데이트를 다시 확인해 주세요.'); return; }
+      applyingUpdate = true;
+      swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    };
+    $('checkUpdates').onclick = async () => {
+      if (!swRegistration) { notify('업데이트 확인을 지원하지 않는 환경이에요.'); return; }
+      try {
+        await swRegistration.update();
+        if (swRegistration.waiting && navigator.serviceWorker.controller) showUpdateNotice();
+        else notify('업데이트를 확인했어요. 새 버전이 없으면 그대로 사용하시면 됩니다.');
+      } catch (error) {
+        notify('인터넷 연결을 확인해 주세요.');
+      }
+    };
     render();
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(error => {
-          console.warn('오프라인 캐시 등록 실패:', error);
-        });
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (applyingUpdate) window.location.reload();
+      });
+      window.addEventListener('load', async () => {
+        try {
+          swRegistration = await navigator.serviceWorker.register('./sw.js');
+          const watch = worker => {
+            if (!worker) return;
+            worker.addEventListener('statechange', () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) showUpdateNotice();
+            });
+          };
+          swRegistration.addEventListener('updatefound', () => watch(swRegistration.installing));
+          if (swRegistration.waiting && navigator.serviceWorker.controller) showUpdateNotice();
+          // 새로 실행할 때 변경 사항을 확인합니다.
+          swRegistration.update().catch(() => {});
+        } catch (error) { console.warn('오프라인 캐시 등록 실패:', error); }
       });
     }
   </script>
