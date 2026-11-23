@@ -1,5 +1,5 @@
-// v0.8: HTML은 온라인일 때 최신 파일을 요청하고, 오프라인일 때 캐시를 사용합니다.
-const CACHE_NAME = 'simple-task-app-v08-1';
+// v0.8.1: HTML은 온라인일 때 최신 파일을 요청하고, 오프라인일 때 캐시를 사용합니다.
+const CACHE_NAME = 'simple-task-app-v081-1';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './icons/icon-48.png', './icons/icon-180.png', './icons/icon-192.png',

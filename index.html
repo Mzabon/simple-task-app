@@ -150,7 +150,12 @@
     .dot-more { font-size: 9px; line-height: 9px; font-weight: 700; opacity: .85; }
     .header-actions { display: flex; align-items: center; gap: 9px; }
     .icon-button { width: 46px; height: 46px; border-radius: 13px; background: var(--surface); color: var(--text); font-size: 22px; display: inline-flex; align-items: center; justify-content: center; }
-    .back-button { font-size: 14px; width: auto; padding: 0 15px; gap: 6px; }
+    /* 아이콘 버튼과 달리 돌아가기 버튼은 문구가 한 줄에 다 들어가야 합니다. */
+    .header-actions .back-button {
+      width: auto; min-width: 102px; height: 46px; padding: 0 14px;
+      white-space: nowrap; flex: 0 0 auto; font-size: 14px; font-weight: 650;
+      gap: 6px;
+    }
     .settings-list { display: flex; flex-direction: column; gap: 10px; }
     .settings-link { width: 100%; border-radius: 14px; padding: 17px 16px; background: var(--surface); color: var(--text); text-align: left; display: flex; align-items: center; gap: 14px; }
     .settings-link .settings-icon { font-size: 22px; width: 29px; text-align: center; }
@@ -191,6 +196,7 @@
     @media (max-width: 480px) {
       .header-actions { gap: 7px; }
       .icon-button, .add { width: 43px; height: 43px; }
+      .header-actions .back-button { width: auto; min-width: 102px; height: 43px; }
       .day .dot { width: 6px; height: 6px; }
       .calendar-dots { gap: 2px; }
       .settings-category-controls .settings-button { padding: 10px; }
@@ -202,7 +208,7 @@
     <header class="top">
       <h1 id="heading">전체 업무</h1>
       <div class="header-actions">
-        <button class="icon-button" id="backSettings" aria-label="뒤로 가기" hidden>← 뒤로</button>
+        <button type="button" class="icon-button back-button" id="backSettings" aria-label="이전 화면으로 돌아가기" hidden>← 뒤로</button>
         <button class="icon-button" id="settingsButton" aria-label="설정 열기" title="설정">⚙</button>
         <button class="add" id="add" aria-label="업무 추가">+</button>
       </div>
@@ -255,7 +261,7 @@
       <div id="settingsAboutPage" hidden>
         <div class="settings-group">
           <h2>나의 작업 관리</h2>
-          <p class="settings-status">버전 v0.8 · 설치형 PWA</p>
+          <p class="settings-status">버전 v0.8.1 · 설치형 PWA</p>
           <p class="settings-status">데이터는 현재 기기에 보관됩니다. 클라우드 동기화는 아직 지원하지 않습니다.</p>
           <button type="button" id="checkUpdates" class="settings-button">↻ 업데이트 확인</button>
         </div>
@@ -473,23 +479,62 @@
     $('calendarTab').onclick = () => setView('calendar');
     $('add').onclick = () => openEditor();
     $('cancel').onclick = () => $('editor').close();
-    $('settingsButton').onclick = () => {
-      if (view !== 'settings') previousView = view;
+    // Android 시스템 뒤로가기와 앱의 돌아가기 버튼은 같은 화면 단계로 이동합니다.
+    // 주소는 변경하지 않고 history state만 쌓아 PWA 설치 URL과 로컬 데이터를 유지합니다.
+    const APP_ROUTE_KEY = 'simple-task-nav-v081';
+    const settingPanels = ['home', 'category', 'data', 'appearance', 'about'];
+    function makeNavState(page, panel, returnView) {
+      return { [APP_ROUTE_KEY]: true, page, panel, returnView };
+    }
+    history.replaceState(makeNavState('main', 'home', view), '', location.href);
+    function navigateToSettings(panel) {
+      if (view !== 'settings') {
+        previousView = view;
+        // 리스트/달력 중 실제 돌아갈 화면을 현재 기록에도 반영합니다.
+        history.replaceState(makeNavState('main', 'home', previousView), '', location.href);
+      }
+      if (!settingPanels.includes(panel)) panel = 'home';
       view = 'settings';
-      settingsPanel = 'home';
+      settingsPanel = panel;
+      history.pushState(makeNavState('settings', panel, previousView), '', location.href);
       render();
-    };
+      if (panel === 'category') renderCategoryList();
+    }
+    $('settingsButton').onclick = () => navigateToSettings('home');
     $('backSettings').onclick = () => {
-      if (settingsPanel !== 'home') settingsPanel = 'home';
-      else view = previousView;
-      render();
+      if (view !== 'settings') return;
+      // 실제 방문 기록을 되돌려 브라우저/기기 뒤로가기와 동작을 일치시킵니다.
+      if (history.state?.[APP_ROUTE_KEY]) history.back();
+      else {
+        if (settingsPanel !== 'home') settingsPanel = 'home';
+        else view = previousView;
+        render();
+      }
     };
     document.querySelectorAll('[data-setting]').forEach(button => {
-      button.onclick = () => {
-        settingsPanel = button.dataset.setting;
-        render();
-        if (settingsPanel === 'category') renderCategoryList();
-      };
+      button.onclick = () => navigateToSettings(button.dataset.setting);
+    });
+    window.addEventListener('popstate', event => {
+      const state = event.state;
+      if (!state?.[APP_ROUTE_KEY]) {
+        // 일부 브라우저에서 이전 기록 상태가 없더라도 설정을 떠날 수 있게 합니다.
+        if (view === 'settings') {
+          view = previousView;
+          settingsPanel = 'home';
+          render();
+        }
+        return;
+      }
+      previousView = state.returnView === 'calendar' ? 'calendar' : 'list';
+      if (state.page === 'settings') {
+        view = 'settings';
+        settingsPanel = settingPanels.includes(state.panel) ? state.panel : 'home';
+      } else {
+        view = previousView;
+        settingsPanel = 'home';
+      }
+      render();
+      if (view === 'settings' && settingsPanel === 'category') renderCategoryList();
     });
     document.querySelectorAll('input[name="themeMode"]').forEach(input => {
       input.onchange = () => {
@@ -1075,7 +1120,7 @@
     // 데이터 내보내기와 복원: 이전 v0.7 저장 키를 그대로 사용합니다.
     function buildBackup() {
       return {
-        appId: FORMAT, schemaVersion: 1, appVersion: '0.8', exportedAt: new Date().toISOString(),
+        appId: FORMAT, schemaVersion: 1, appVersion: '0.8.1', exportedAt: new Date().toISOString(),
         data: {
           tasks, categories, categoryColors, categoryIds,
           preferences: { theme: themeMode, sort }
